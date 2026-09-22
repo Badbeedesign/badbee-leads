@@ -32,7 +32,79 @@ async function analyzeLead(id,silent=false){if(!silent)alert('Автопрове
 function clearForm(){$('#leadForm').reset();$('#leadId').value='';$('#formTitle').textContent='Новый лид'}$('#cancelEdit').onclick=()=>{clearForm();showView('leads')};$('#leadForm').onsubmit=e=>{e.preventDefault();let id=$('#leadId').value||crypto.randomUUID(),l={id,company:$('#company').value.trim(),city:$('#city').value.trim(),niche:$('#niche').value.trim(),source:$('#source').value,website:$('#website').value.trim(),social:$('#social').value.trim(),contact:$('#contact').value.trim(),status:$('#status').value,notes:$('#notes').value.trim(),signals:{needsDesigner:$('#needsDesigner').checked,activeLaunch:$('#activeLaunch').checked,weakSite:$('#weakSite').checked,activeSocial:$('#activeSocial').checked,hasContacts:$('#hasContacts').checked,goodNiche:$('#goodNiche').checked}};let i=leads.findIndex(x=>x.id===id);if(i>=0)leads[i]=l;else leads.unshift(l);save();clearForm();showView('leads');refresh()};
 $('#exportBtn').onclick=()=>{let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(leads,null,2)],{type:'application/json'}));a.download='badbee-leads.json';a.click()};$('#importInput').onchange=async e=>{try{let d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d))throw 0;leads=d;save();refresh();alert('Импортировано')}catch{alert('Ошибка JSON')}};
 const catNames={cafe:'Кафе / ресторан',dental:'Стоматология',clinic:'Клиника',beauty:'Салон красоты',fitness:'Фитнес',hotel:'Отель',education:'Образование',realestate:'Недвижимость',shop:'Магазин'};
-$('#runSearch').onclick=async()=>{let btn=$('#runSearch'),city=$('#findCity').value.trim(),category=$('#findCategory').value,limit=+$('#findLimit').value;if(!city)return alert('Укажи город');btn.disabled=true;btn.innerHTML='<span class="loading"></span>Ищу';$('#searchNotice').textContent='Ищу компании в открытых данных OpenStreetMap…';try{const cats={cafe:['["amenity"~"restaurant|cafe|fast_food"]'],dental:['["amenity"="dentist"]','["healthcare"="dentist"]'],clinic:['["amenity"~"clinic|doctors"]','["healthcare"~"clinic|doctor"]'],beauty:['["shop"~"beauty|hairdresser"]'],fitness:['["leisure"="fitness_centre"]','["sport"="fitness"]'],hotel:['["tourism"~"hotel|guest_house|hostel"]'],education:['["amenity"~"school|college|university|language_school|music_school|training"]'],realestate:['["office"="estate_agent"]'],shop:['["shop"]']};const clauses=(cats[category]||cats.cafe).map(f=>`nwr${f}(area.searchArea);`).join('');const q=`[out:json][timeout:25];area["name"="${city.replace(/"/g,'')}"]["boundary"="administrative"]->.searchArea;(${clauses});out center tags ${limit};`;let r=await fetch('https://overpass-api.de/api/interpreter?data='+encodeURIComponent(q)),d=await r.json();if(!r.ok)throw new Error('OpenStreetMap временно не ответил');found=(d.elements||[]).map(el=>{const t=el.tags||{};return{name:t.name||t.brand||'',website:t.website||t['contact:website']||'',phone:t.phone||t['contact:phone']||'',email:t.email||t['contact:email']||'',address:[t['addr:street'],t['addr:housenumber']].filter(Boolean).join(', ')}}).filter(x=>x.name).slice(0,limit);renderResults();$('#resultsPanel').classList.remove('hidden');$('#searchNotice').textContent=`Найдено ${found.length}. Поиск работает напрямую через открытые данные OpenStreetMap.`;}catch(err){$('#searchNotice').textContent='Не удалось выполнить поиск: '+err.message+'. Попробуй ещё раз через минуту.'}finally{btn.disabled=false;btn.textContent='Найти компании'}};
+$('#runSearch').onclick=async()=>{
+  let btn=$('#runSearch'),
+      city=$('#findCity').value.trim(),
+      category=$('#findCategory').value,
+      limit=+$('#findLimit').value;
+
+  if(!city)return alert('Укажи город');
+
+  btn.disabled=true;
+  btn.innerHTML='<span class="loading"></span>Ищу';
+  $('#searchNotice').textContent='Определяю город и ищу компании…';
+
+  try{
+    const geoRes=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ru&q='+encodeURIComponent(city));
+    const geo=await geoRes.json();
+
+    if(!geo.length)throw new Error('Город не найден');
+
+    const [south,north,west,east]=geo[0].boundingbox.map(Number);
+
+    const cats={
+      cafe:['["amenity"~"restaurant|cafe|fast_food"]'],
+      dental:['["amenity"="dentist"]','["healthcare"="dentist"]'],
+      clinic:['["amenity"~"clinic|doctors"]','["healthcare"~"clinic|doctor"]'],
+      beauty:['["shop"~"beauty|hairdresser"]'],
+      fitness:['["leisure"="fitness_centre"]','["sport"="fitness"]'],
+      hotel:['["tourism"~"hotel|guest_house|hostel"]'],
+      education:['["amenity"~"school|college|university|language_school|music_school|training"]'],
+      realestate:['["office"="estate_agent"]'],
+      shop:['["shop"]']
+    };
+
+    const clauses=(cats[category]||cats.cafe)
+      .map(f=>`nwr${f}(${south},${west},${north},${east});`)
+      .join('');
+
+    const q=`[out:json][timeout:25];(${clauses});out center tags;`;
+
+    const r=await fetch(
+      'https://overpass-api.de/api/interpreter?data='+encodeURIComponent(q)
+    );
+
+    if(!r.ok)throw new Error('OpenStreetMap временно не ответил');
+
+    const d=await r.json();
+
+    found=(d.elements||[])
+      .map(el=>{
+        const t=el.tags||{};
+        return{
+          name:t.name||t.brand||'',
+          website:t.website||t['contact:website']||'',
+          phone:t.phone||t['contact:phone']||'',
+          email:t.email||t['contact:email']||'',
+          address:[t['addr:street'],t['addr:housenumber']]
+            .filter(Boolean)
+            .join(', ')
+        };
+      })
+      .filter(x=>x.name)
+      .slice(0,limit);
+
+    renderResults();
+    $('#resultsPanel').classList.remove('hidden');
+    $('#searchNotice').textContent=`Найдено ${found.length}. Поиск выполнен по OpenStreetMap.`;
+
+  }catch(err){
+    $('#searchNotice').textContent='Не удалось выполнить поиск: '+err.message;
+  }finally{
+    btn.disabled=false;
+    btn.textContent='Найти компании';
+  }
+};
 function renderResults(){let existing=new Set(leads.map(l=>norm(l.company)+'|'+norm(l.website)));$('#resultsCount').textContent='· '+found.length;$('#results').innerHTML=found.map((r,i)=>{let dup=existing.has(norm(r.name)+'|'+norm(r.website));return`<div class="result"><input class="pick" type="checkbox" data-i="${i}" ${dup?'disabled':''}><div><div class="rtitle">${esc(r.name)}</div><div class="rmeta">${esc(r.address||'Адрес не указан')} ${dup?'· уже в базе':''}</div></div><div class="rcontact">${r.website?esc(r.website):'<span class="muted">сайт не указан</span>'}</div><div class="rcontact">${esc(r.phone||r.email||'контакт не указан')}</div></div>`}).join('')||'<p class="muted">В этой категории ничего не найдено.</p>'}
 const norm=s=>(s||'').toLowerCase().replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,'').trim();$('#analyzeAll').onclick=()=>alert('Автопроверку сайтов подключим отдельной серверной функцией. В GitHub Pages она не выполняется напрямую из браузера.');
 $('#selectAll').onclick=()=>document.querySelectorAll('.pick:not(:disabled)').forEach(x=>x.checked=true);$('#saveSelected').onclick=()=>{let inds=[...document.querySelectorAll('.pick:checked')].map(x=>+x.dataset.i),category=$('#findCategory').value,city=$('#findCity').value.trim();let added=0;for(let i of inds){let r=found[i],l={id:crypto.randomUUID(),company:r.name,city,niche:catNames[category],source:'OpenStreetMap',website:r.website||'',social:'',contact:r.phone||r.email||'',status:'Новый',notes:'Найдено автоматически. Требуется проверить сайт и визуальную подачу.',signals:{needsDesigner:false,activeLaunch:false,weakSite:false,activeSocial:false,hasContacts:!!(r.phone||r.email||r.website),goodNiche:['dental','clinic','realestate','hotel'].includes(category)}};if(!leads.some(x=>norm(x.company)===norm(l.company)&&norm(x.website)===norm(l.website))){leads.unshift(l);added++}}save();refresh();renderResults();alert(`Добавлено лидов: ${added}`)};
