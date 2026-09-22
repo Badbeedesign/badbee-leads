@@ -1,0 +1,181 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BADBEE LEADS</title><link rel="stylesheet" href="styles.css"></head><body>
+<div id="loginScreen" class="login-screen"><div class="login-card"><div class="brand login-brand">BADBEE<br><span>LEADS</span></div><h2>Вход в общую базу</h2><p class="muted">Используйте аккаунт, созданный в Supabase Authentication.</p><label>Email<input id="loginEmail" type="email" autocomplete="username"></label><label>Пароль<input id="loginPassword" type="password" autocomplete="current-password"></label><button class="primary full" onclick="bbLogin()">Войти</button><p id="loginError" class="login-error"></p></div></div>
+<div class="app auth-hidden"><aside class="sidebar"><div><div class="brand">BADBEE<br><span>LEADS</span></div><p class="muted small">MVP · 0 ₽ test</p><nav><button class="nav active" data-view="dashboard">Обзор</button><button class="nav" data-view="finder">Найти клиентов</button><button class="nav" data-view="leads">Лиды</button><button class="nav" data-view="add">Добавить вручную</button><button class="nav" data-view="campaign">Кампания</button><button class="nav" data-view="signals">Сигналы спроса</button><button class="nav" data-view="research">Инфоповоды</button><button class="nav" data-view="outreach">Сообщения</button><button class="nav" data-view="results">Результаты</button></nav></div><div class="sidefoot"><div class="userbox"><span id="userEmail"></span><button class="ghost full" onclick="bbLogout()">Выйти</button></div><button id="exportBtn" class="ghost full">Экспорт JSON</button><label class="ghost full filelabel">Импорт JSON<input id="importInput" type="file" accept=".json" hidden></label><div class="osm">Данные поиска © OpenStreetMap contributors</div></div></aside>
+<main><header><div><h1 id="viewTitle">Обзор</h1><p class="muted">Поиск и квалификация клиентов на дизайн</p></div><button id="quickAdd" class="primary">+ Новый лид</button></header>
+<section id="dashboardView" class="view active"><div id="stats" class="stats"></div><div class="grid2"><div class="panel"><div class="panelhead"><h2>Горячие лиды</h2><span class="pill">Score ≥ 70</span></div><div id="hotLeads"></div></div><div class="panel"><h2>Воронка</h2><div id="funnel"></div></div></div></section>
+<section id="finderView" class="view"><div class="panel finder"><div class="panelhead"><div><h2>Бесплатный поиск</h2><p class="muted">Тестируем спрос на открытых данных OpenStreetMap</p></div><span class="pill">0 ₽</span></div><div class="searchgrid"><label>Город<input id="findCity" value="Иркутск"></label><label>Ниша<select id="findCategory"><option value="cafe">Кафе и рестораны</option><option value="dental">Стоматологии</option><option value="clinic">Клиники</option><option value="beauty">Салоны красоты</option><option value="fitness">Фитнес</option><option value="hotel">Отели</option><option value="education">Образование</option><option value="realestate">Недвижимость / агентства</option><option value="shop">Магазины</option></select></label><label>Лимит<select id="findLimit"><option>20</option><option selected>50</option><option>100</option></select></label><button id="runSearch" class="primary tall">Найти компании</button></div><div id="searchNotice" class="notice">Поиск выполняется только по кнопке, результаты кэшируются. Это тестовый источник, не замена 2ГИС.</div></div><div id="resultsPanel" class="panel hidden"><div class="panelhead"><h2>Результаты <span id="resultsCount" class="muted"></span></h2><div><button id="selectAll" class="ghost dark">Выбрать все</button><button id="saveSelected" class="primary">Добавить выбранные</button></div></div><div id="results" class="results"></div></div></section>
+<section id="leadsView" class="view"><div class="toolbar"><input id="searchInput" placeholder="Компания, ниша, город..."><select id="statusFilter"><option value="">Все статусы</option><option>Новый</option><option>В работу</option><option>Написала</option><option>Ответил</option><option>Переговоры</option><option>Клиент</option><option>Отказ</option></select><select id="serviceFilter"><option value="">Все услуги</option><option>Презентация</option><option>Сайт</option><option>Айдентика</option><option>Каталог</option><option>Соцсети</option></select><button id="analyzeAll" class="primary">Проверить сайты</button></div><div class="tablewrap"><table><thead><tr><th>Компания</th><th>Город</th><th>Ниша</th><th>Что продать</th><th>Score</th><th>Сайт</th><th>Статус</th><th></th></tr></thead><tbody id="leadsTable"></tbody></table></div></section>
+<section id="addView" class="view"><div class="panel formpanel"><h2 id="formTitle">Новый лид</h2><form id="leadForm"><input type="hidden" id="leadId"><div class="formgrid"><label>Компания<input id="company" required></label><label>Город<input id="city"></label><label>Ниша<input id="niche"></label><label>Источник<select id="source"><option>OpenStreetMap</option><option>2ГИС</option><option>Сайт</option><option>Threads</option><option>Facebook</option><option>Другое</option></select></label><label>Сайт<input id="website"></label><label>Соцсеть<input id="social"></label><label>Публичный контакт<input id="contact"></label><label>Статус<select id="status"><option>Новый</option><option>В работу</option><option>Написала</option><option>Ответил</option><option>Переговоры</option><option>Клиент</option><option>Отказ</option></select></label></div><h3>Сигналы</h3><div class="checks"><label><input type="checkbox" id="needsDesigner"> Прямо ищет дизайнера</label><label><input type="checkbox" id="activeLaunch"> Запуск / новый продукт / филиал</label><label><input type="checkbox" id="weakSite"> Сайт требует внимания</label><label><input type="checkbox" id="activeSocial"> Активные соцсети</label><label><input type="checkbox" id="hasContacts"> Есть открытые контакты</label><label><input type="checkbox" id="goodNiche"> Ниша с хорошим чеком</label></div><label>Что заметили<textarea id="notes" rows="4"></textarea></label><div class="actions"><button class="primary" type="submit">Сохранить</button><button class="ghost dark" type="button" id="cancelEdit">Отмена</button></div></form></div></section>
+
+      <section id="campaignView" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Тестовая кампания</h2>
+              <p class="muted">Проверяем, способен ли BADBEE Leads привести реального клиента до платного масштабирования.</p>
+            </div>
+            <button class="primary" id="buildCampaign">Собрать TOP-20</button>
+          </div>
+          <div class="campaign-goal">
+            <b>Цель теста:</b> 100 найденных компаний → TOP-20 → персональные касания → ответы → переговоры → первый клиент.
+          </div>
+          <div class="stats" id="campaignStats"></div>
+        </div>
+
+        <div class="grid2" style="margin-top:14px">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Кому писать сегодня</h2>
+              <span class="pill">до 5 лидов</span>
+            </div>
+            <div id="todayQueue" class="lead-list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Результат теста</h2></div>
+            <div id="testResult"></div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:14px">
+          <div class="panel-head">
+            <h2>TOP-20 кампании</h2>
+            <button class="ghost" id="clearCampaign">Сбросить кампанию</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Компания</th><th>Score</th><th>Предложить</th><th>Статус</th><th>Последнее касание</th><th></th></tr></thead>
+              <tbody id="campaignTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      
+      <section id="signalsView" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Сигналы спроса</h2>
+              <p class="muted">Не просто список бизнесов: отмечаем признаки, что дизайн может понадобиться именно сейчас.</p>
+            </div>
+            <button class="primary" id="scanSignals">Пересчитать сигналы</button>
+          </div>
+
+          <div class="signal-filter-grid">
+            <label>Ниша
+              <select id="signalNiche">
+                <option value="">Все ниши</option>
+                <option>Кафе / ресторан</option><option>Стоматология</option><option>Клиника</option>
+                <option>Салон красоты</option><option>Фитнес</option><option>Отель</option>
+                <option>Образование</option><option>Недвижимость</option><option>Магазин</option>
+                <option>Строительство</option><option>Производство</option><option>Event</option>
+                <option>Туризм</option><option>Консалтинг</option><option>IT / SaaS</option>
+              </select>
+            </label>
+            <label>Минимальный приоритет
+              <select id="signalMinScore">
+                <option value="0">Любой</option><option value="40">40+</option><option value="55">55+</option>
+                <option value="70" selected>70+</option><option value="85">85+</option>
+              </select>
+            </label>
+            <label>Что продавать
+              <select id="signalService">
+                <option value="">Любая услуга</option><option>Презентация</option><option>Сайт</option>
+                <option>Айдентика</option><option>Каталог</option><option>Соцсети</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:14px">
+          <div class="panel-head">
+            <h2>Приоритетные лиды</h2>
+            <span class="pill" id="signalCount">0 лидов</span>
+          </div>
+          <div id="signalCards" class="signal-cards"></div>
+        </div>
+      </section>
+
+      <section id="researchView" class="view"><div class="panel"><div class="panelhead"><div><h2>Инфоповоды компании</h2><p class="muted">Бесплатный этап: BADBEE формирует точные запросы, а в оценку попадают только подтверждённые находки со ссылкой.</p></div><span class="pill">0 ₽</span></div><div class="research-controls"><label>Компания<select id="researchLead"></select></label><label>Что ищем<select id="researchType"><option value="all">Все сигналы</option><option value="launch">Запуск / новая услуга</option><option value="branch">Открытие / новый филиал</option><option value="event">Мероприятие / выставка</option><option value="rebrand">Ребрендинг / обновление сайта</option><option value="hiring">Вакансия дизайнера / маркетолога</option><option value="designer">Прямо ищут дизайнера</option></select></label><button class="primary tall" id="makeQueries">Сформировать поиск</button></div><div class="notice">Поиск открывается в обычном браузере. Это позволяет проверить гипотезу без покупки поискового API.</div></div><div class="grid2 research-grid" style="margin-top:14px"><div class="panel"><div class="panelhead"><h2>Готовые запросы</h2><span class="pill">по компании</span></div><div id="queryList"><p class="muted">Выберите компанию и сформируйте поиск.</p></div></div><div class="panel"><div class="panelhead"><h2>Подтвердить находку</h2></div><form id="evidenceForm" class="evidence-form"><label>Сигнал<select id="evidenceType"><option value="launch">Запуск / новая услуга</option><option value="branch">Открытие / новый филиал</option><option value="event">Мероприятие / выставка</option><option value="rebrand">Ребрендинг / обновление</option><option value="hiring">Вакансия дизайнера / маркетолога</option><option value="designer">Прямо ищут дизайнера</option></select></label><label>Ссылка на источник<input id="evidenceUrl" placeholder="https://..." required></label><label>Что произошло<textarea id="evidenceNote" rows="4" placeholder="Например: объявили об открытии второго филиала" required></textarea></label><button class="primary" type="submit">Подтвердить сигнал</button></form></div></div><div class="panel" style="margin-top:14px"><div class="panelhead"><h2>Подтверждённые инфоповоды</h2><span id="evidenceCount" class="pill">0</span></div><div id="evidenceList"></div></div></section>
+
+<section id="outreachView" class="view">
+  <div class="panel">
+    <div class="panelhead">
+      <div>
+        <h2>Персональные сообщения</h2>
+        <p class="muted">Текст строится только из данных лида и подтверждённых инфоповодов — без выдуманных фактов и шаблонных комплиментов.</p>
+      </div>
+      <span class="pill">ручная отправка</span>
+    </div>
+    <div class="research-controls">
+      <label>Компания<select id="outreachLead"></select></label>
+      <label>Формат
+        <select id="outreachChannel">
+          <option value="dm">Соцсети / DM</option>
+          <option value="email">Email</option>
+          <option value="short">Очень коротко</option>
+        </select>
+      </label>
+      <button class="primary tall" id="generateOutreach">Собрать сообщение</button>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-top:14px">
+    <div class="panel">
+      <div class="panelhead"><h2>Почему пишем</h2><span id="outreachScore" class="pill">—</span></div>
+      <div id="outreachReasons"></div>
+    </div>
+    <div class="panel">
+      <div class="panelhead"><h2>Что предлагаем</h2></div>
+      <div id="outreachOffer"></div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:14px">
+    <div class="panelhead">
+      <h2>Готовый текст</h2>
+      <div class="actions compact">
+        <button class="ghost dark" id="copyOutreach">Копировать</button>
+        <button class="primary" id="markOutreachSent">Отметить «Написала»</button>
+      </div>
+    </div>
+    <textarea id="outreachText" class="outreach-text" rows="11"></textarea>
+    <p class="muted small" style="margin-top:10px">Перед отправкой текст можно изменить вручную. Массовую авторассылку в тестовой версии не включаем.</p>
+  </div>
+</section>
+
+
+<section id="resultsView" class="view">
+  <div class="panel">
+    <div class="panelhead">
+      <div><h2>Результаты теста</h2><p class="muted">Считаем не количество найденных компаний, а ответы, переговоры, клиентов и деньги.</p></div>
+      <span class="pill">MVP analytics</span>
+    </div>
+    <div id="resultStats" class="stats"></div>
+  </div>
+
+  <div class="grid2" style="margin-top:14px">
+    <div class="panel"><div class="panelhead"><h2>Что работает</h2></div><div id="bestSegments"></div></div>
+    <div class="panel"><div class="panelhead"><h2>Причины отказов</h2></div><div id="rejectionStats"></div></div>
+  </div>
+
+  <div class="panel" style="margin-top:14px">
+    <div class="panelhead"><h2>Зафиксировать результат лида</h2></div>
+    <form id="resultForm" class="result-form">
+      <label>Компания<select id="resultLead"></select></label>
+      <label>Результат<select id="resultStatus"><option>Написала</option><option>Ответил</option><option>Переговоры</option><option>Клиент</option><option>Отказ</option></select></label>
+      <label>Потенциальная сумма, ₽<input id="resultValue" type="number" min="0" step="1000" placeholder="25000"></label>
+      <label>Причина отказа<select id="rejectReason"><option value="">—</option><option>Не актуально сейчас</option><option>Нет бюджета</option><option>Есть дизайнер</option><option>Не ответили после диалога</option><option>Не подошла цена</option><option>Другое</option></select></label>
+      <label class="wide">Комментарий<textarea id="resultNote" rows="3" placeholder="Что ответил клиент / что выяснили"></textarea></label>
+      <button class="primary" type="submit">Сохранить результат</button>
+    </form>
+  </div>
+
+  <div class="panel" style="margin-top:14px">
+    <div class="panelhead"><h2>История касаний</h2><button class="ghost dark" id="exportResults">Экспорт CSV</button></div>
+    <div class="table-wrap"><table><thead><tr><th>Дата</th><th>Компания</th><th>Ниша</th><th>Услуга</th><th>Статус</th><th>Сумма</th><th>Комментарий</th></tr></thead><tbody id="resultHistory"></tbody></table></div>
+  </div>
+</section>
+
+<div id="drawer" class="drawer hidden"><div class="drawercard"><button id="closeDrawer" class="close">×</button><div id="drawerContent"></div></div></div>
+</main></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="supabase-sync.js"></script><script src="app.js"></script></body></html>
