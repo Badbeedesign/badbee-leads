@@ -94,7 +94,7 @@ $('#runSearch').onclick=async()=>{
       .filter(x=>x.name)
       .slice(0,limit);
 
-    renderResults();
+    renderSearchResults();
     $('#resultsPanel').classList.remove('hidden');
     $('#searchNotice').textContent=`Найдено ${found.length}. Поиск выполнен по OpenStreetMap.`;
 
@@ -105,9 +105,9 @@ $('#runSearch').onclick=async()=>{
     btn.textContent='Найти компании';
   }
 };
-function renderResults(){let existing=new Set(leads.map(l=>norm(l.company)+'|'+norm(l.website)));$('#resultsCount').textContent='· '+found.length;$('#results').innerHTML=found.map((r,i)=>{let dup=existing.has(norm(r.name)+'|'+norm(r.website));return`<div class="result"><input class="pick" type="checkbox" data-i="${i}" ${dup?'disabled':''}><div><div class="rtitle">${esc(r.name)}</div><div class="rmeta">${esc(r.address||'Адрес не указан')} ${dup?'· уже в базе':''}</div></div><div class="rcontact">${r.website?esc(r.website):'<span class="muted">сайт не указан</span>'}</div><div class="rcontact">${esc(r.phone||r.email||'контакт не указан')}</div></div>`}).join('')||'<p class="muted">В этой категории ничего не найдено.</p>'}
+function renderSearchResults(){let existing=new Set(leads.map(l=>norm(l.company)+'|'+norm(l.website)));$('#resultsCount').textContent='· '+found.length;$('#results').innerHTML=found.map((r,i)=>{let dup=existing.has(norm(r.name)+'|'+norm(r.website));return`<div class="result"><input class="pick" type="checkbox" data-i="${i}" ${dup?'disabled':''}><div><div class="rtitle">${esc(r.name)}</div><div class="rmeta">${esc(r.address||'Адрес не указан')} ${dup?'· уже в базе':''}</div></div><div class="rcontact">${r.website?esc(r.website):'<span class="muted">сайт не указан</span>'}</div><div class="rcontact">${esc(r.phone||r.email||'контакт не указан')}</div></div>`}).join('')||'<p class="muted">В этой категории ничего не найдено.</p>'}
 const norm=s=>(s||'').toLowerCase().replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,'').trim();$('#analyzeAll').onclick=()=>alert('Автопроверку сайтов подключим отдельной серверной функцией. В GitHub Pages она не выполняется напрямую из браузера.');
-$('#selectAll').onclick=()=>document.querySelectorAll('.pick:not(:disabled)').forEach(x=>x.checked=true);$('#saveSelected').onclick=()=>{let inds=[...document.querySelectorAll('.pick:checked')].map(x=>+x.dataset.i),category=$('#findCategory').value,city=$('#findCity').value.trim();let added=0;for(let i of inds){let r=found[i],l={id:crypto.randomUUID(),company:r.name,city,niche:catNames[category],source:'OpenStreetMap',website:r.website||'',social:'',contact:r.phone||r.email||'',status:'Новый',notes:'Найдено автоматически. Требуется проверить сайт и визуальную подачу.',signals:{needsDesigner:false,activeLaunch:false,weakSite:false,activeSocial:false,hasContacts:!!(r.phone||r.email||r.website),goodNiche:['dental','clinic','realestate','hotel'].includes(category)}};if(!leads.some(x=>norm(x.company)===norm(l.company)&&norm(x.website)===norm(l.website))){leads.unshift(l);added++}}save();refresh();renderResults();alert(`Добавлено лидов: ${added}`)};
+$('#selectAll').onclick=()=>document.querySelectorAll('.pick:not(:disabled)').forEach(x=>x.checked=true);$('#saveSelected').onclick=()=>{let inds=[...document.querySelectorAll('.pick:checked')].map(x=>+x.dataset.i),category=$('#findCategory').value,city=$('#findCity').value.trim();let added=0;for(let i of inds){let r=found[i],l={id:crypto.randomUUID(),company:r.name,city,niche:catNames[category],source:'OpenStreetMap',website:r.website||'',social:'',contact:r.phone||r.email||'',status:'Новый',notes:'Найдено автоматически. Требуется проверить сайт и визуальную подачу.',signals:{needsDesigner:false,activeLaunch:false,weakSite:false,activeSocial:false,hasContacts:!!(r.phone||r.email||r.website),goodNiche:['dental','clinic','realestate','hotel'].includes(category)}};if(!leads.some(x=>norm(x.company)===norm(l.company)&&norm(x.website)===norm(l.website))){leads.unshift(l);added++}}save();refresh();renderSearchResults();alert(`Добавлено лидов: ${added}`)};
 refresh();
 
 
