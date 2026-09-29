@@ -2,15 +2,59 @@ const KEY='badbee_leads_v2';let leads=[];let found=[];
 const $=s=>document.querySelector(s);const save=()=>{localStorage.setItem(KEY,JSON.stringify(leads));if(window.bbPersistLeads)window.bbPersistLeads();};
 function score(l){const s=l.signals||{};return(s.needsDesigner?30:0)+(s.activeLaunch?20:0)+(s.weakSite?15:0)+(s.activeSocial?15:0)+(s.hasContacts?10:0)+(s.goodNiche?10:0)}
 function recommendation(l){
-  const n=(l.niche||'').toLowerCase(),a=l.siteAnalysis||{},issues=a.issues||[],sg=l.signals||{};
-  const has=x=>issues.some(i=>i.toLowerCase().includes(x));
-  let primary='Презентация',reason='подходит для упаковки услуг и продаж',hook='презентацию услуг и визуальную подачу';
-  if(sg.weakSite||has('viewport')||has('description')||has('title')||has('https')){primary='Сайт';reason='на сайте обнаружены конкретные технические точки роста';hook='сайт и то, как он презентует компанию';}
-  else if(/каф|ресторан/.test(n)){primary='Меню / соцсети';reason='в этой нише особенно важна визуальная подача продукта';hook='визуальную подачу меню и коммуникаций';}
-  else if(/красот|салон|магаз|бренд/.test(n)){primary='Айдентика / соцсети';reason='ниша сильно зависит от узнаваемой визуальной системы';hook='визуальную систему бренда';}
-  else if(/стро|недвиж|клиник|стомат|образ|b2b|отел/.test(n)){primary='Презентация';reason='услуги удобно продавать через презентацию или коммерческое предложение';hook='презентацию услуг и коммерческие материалы';}
-  const evidence=[]; if(a.ok&&issues.length)evidence.push(...issues.slice(0,3)); if(sg.activeLaunch)evidence.push('есть сигнал запуска или роста'); if(sg.hasContacts)evidence.push('есть публичный канал для первого контакта');
-  return {primary,reason,hook,evidence};
+  const n=(l.niche||'').toLowerCase();
+
+  let primary='Презентация';
+  let reason='можно усилить визуальную упаковку компании';
+  let hook='презентацию компании и визуальную подачу';
+
+  if(/каф|ресторан/.test(n)){
+    primary='Меню / соцсети';
+    reason='для кафе и ресторанов особенно важна визуальная подача блюд, меню и контента';
+    hook='оформление меню и социальных сетей';
+  }
+  else if(/стомат|клиник/.test(n)){
+    primary='Презентация / соцсети';
+    reason='можно визуально упаковать услуги, преимущества и коммуникацию с клиентами';
+    hook='презентацию услуг и оформление социальных сетей';
+  }
+  else if(/красот|салон/.test(n)){
+    primary='Айдентика / соцсети';
+    reason='визуальный стиль напрямую влияет на восприятие бренда';
+    hook='айдентику и оформление социальных сетей';
+  }
+  else if(/фитнес/.test(n)){
+    primary='Соцсети / полиграфия';
+    reason='можно усилить оформление акций, абонементов и рекламных материалов';
+    hook='социальные сети и рекламные материалы';
+  }
+  else if(/отел/.test(n)){
+    primary='Презентация / полиграфия';
+    reason='визуальная подача помогает продавать номера, услуги и специальные предложения';
+    hook='презентационные и рекламные материалы';
+  }
+  else if(/образ/.test(n)){
+    primary='Презентация / полиграфия';
+    reason='программы и образовательные продукты требуют понятной визуальной упаковки';
+    hook='презентации и информационные материалы';
+  }
+  else if(/недвиж/.test(n)){
+    primary='Презентация / каталог';
+    reason='объекты и проекты удобно продавать через сильные презентационные материалы';
+    hook='презентации объектов и каталоги';
+  }
+  else if(/магаз/.test(n)){
+    primary='Айдентика / соцсети';
+    reason='можно усилить визуальную систему, акции и оформление контента';
+    hook='визуальную систему бренда и социальные сети';
+  }
+
+  return {
+    primary,
+    reason,
+    hook,
+    evidence:[]
+  };
 }
 function service(l){return recommendation(l).primary}
 function message(l){
