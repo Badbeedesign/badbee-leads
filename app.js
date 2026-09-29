@@ -28,7 +28,75 @@ function showView(v){document.querySelectorAll('.view').forEach(x=>x.classList.r
 document.querySelectorAll('.nav').forEach(b=>b.onclick=()=>showView(b.dataset.view));$('#quickAdd').onclick=()=>{clearForm();showView('add')};['searchInput','statusFilter','serviceFilter'].forEach(id=>$('#'+id).addEventListener('input',renderTable));
 function openLead(id){const l=leads.find(x=>x.id===id);if(!l)return;let sm={needsDesigner:'Ищет дизайнера',activeLaunch:'Запуск/рост',weakSite:'Слабый сайт',activeSocial:'Активные соцсети',hasContacts:'Есть контакты',goodNiche:'Хороший чек'};let tags=Object.entries(l.signals||{}).filter(x=>x[1]).map(x=>sm[x[0]]).filter(Boolean);$('#drawerContent').innerHTML=`<h2>${esc(l.company)}</h2><div class="muted">${esc(l.city||'')} · ${esc(l.niche||'')} · ${esc(l.source||'')}</div><div class="detailgrid"><div class="detailbox"><span class="muted small">Lead Score</span><h2>${score(l)}/100</h2></div><div class="detailbox"><span class="muted small">Предложить</span><h2>${service(l)}</h2></div></div><div>${tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div><h3 style="margin-top:20px">Рекомендация BADBEE</h3><div class="analysisbox"><b>${esc(recommendation(l).primary)}</b><p>${esc(recommendation(l).reason)}</p><p class="muted small" style="white-space:pre-line">${esc(whyLead(l))}</p></div><h3>Заметки</h3><p>${esc(l.notes||'Пока нет заметок.')}</p><h3>Контакты</h3><p>${l.website?`Сайт: ${esc(l.website)}<br>`:''}${l.social?`Соцсеть: ${esc(l.social)}<br>`:''}${l.contact?`Контакт: ${esc(l.contact)}`:'Публичный контакт не добавлен'}</p>${siteAnalysisHtml(l)}<h3>Первое сообщение</h3><div class="message">${esc(message(l))}</div><div class="actions">${l.website?`<button class="primary" onclick="analyzeLead('${l.id}')">Проверить сайт</button>`:''}<button class="primary" onclick="copyMsg('${l.id}')">Скопировать</button><button class="ghost dark" onclick="editLead('${l.id}')">Редактировать</button><button class="ghost dark" onclick="deleteLead('${l.id}')">Удалить</button></div>`;$('#drawer').classList.remove('hidden')}
 function siteAnalysisHtml(l){let a=l.siteAnalysis;if(!a)return l.website?'<h3>Проверка сайта</h3><p class="muted">Сайт ещё не проверен.</p>':'';if(!a.ok)return `<h3>Проверка сайта</h3><p class="muted">Не удалось проверить: ${esc(a.error||'ошибка')}</p>`;return `<h3>Проверка сайта</h3><div class="analysisbox"><div><b>${a.needs_attention?'Есть сигналы для внимания':'Базовые технические признаки в норме'}</b></div>${a.issues?.length?`<p><b>Что обнаружено:</b><br>${a.issues.map(x=>'• '+esc(x)).join('<br>')}</p>`:''}${a.positives?.length?`<p class="muted"><b>Плюсы:</b> ${a.positives.map(esc).join(', ')}</p>`:''}<p class="muted small">Это техническая эвристика, а не оценка красоты дизайна.</p></div>`}
-async function analyzeLead(id,silent=false){if(!silent)alert('Автопроверка сайтов в веб-версии пока отключена: браузер не может безопасно читать чужие сайты напрямую. Лиды, общая база, поиск, статусы, инфоповоды, сообщения и результаты работают.');return false;}
+async function analyzeLead(id,silent=false){
+  const l=leads.find(x=>x.id===id);
+  if(!l)return false;
+
+  if(!l.website){
+    if(!silent)alert('У этого лида не указан сайт.');
+    return false;
+  }
+
+  try{
+    if(!silent){
+      const btn=event?.target;
+      if(btn){
+        btn.disabled=true;
+        btn.textContent='Проверяю…';
+      }
+    }
+
+    const response=await fetch(
+      'https://isjlcxnhqcznaobpyeet.supabase.co/functions/v1/analyze-site',
+      {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json'
+        },
+        body:JSON.stringify({
+          url:l.website
+        })
+      }
+    );
+
+    const data=await response.json();
+
+    if(!response.ok || !data.ok){
+      throw new Error(data.error||'Не удалось проверить сайт');
+    }
+
+    l.siteAnalysis=data;
+
+    l.signals={
+      ...(l.signals||{}),
+      weakSite:!!data.needs_attention,
+      hasContacts:!!(
+        l.contact ||
+        l.website ||
+        l.social
+      )
+    };
+
+    save();
+    refresh();
+
+    if(!silent){
+      openLead(id);
+    }
+
+    return true;
+
+  }catch(err){
+    console.error('BADBEE site analysis:',err);
+
+    if(!silent){
+      alert('Не удалось проверить сайт: '+err.message);
+      openLead(id);
+    }
+
+    return false;
+  }
+}
 function clearForm(){$('#leadForm').reset();$('#leadId').value='';$('#formTitle').textContent='Новый лид'}$('#cancelEdit').onclick=()=>{clearForm();showView('leads')};$('#leadForm').onsubmit=e=>{e.preventDefault();let id=$('#leadId').value||crypto.randomUUID(),l={id,company:$('#company').value.trim(),city:$('#city').value.trim(),niche:$('#niche').value.trim(),source:$('#source').value,website:$('#website').value.trim(),social:$('#social').value.trim(),contact:$('#contact').value.trim(),status:$('#status').value,notes:$('#notes').value.trim(),signals:{needsDesigner:$('#needsDesigner').checked,activeLaunch:$('#activeLaunch').checked,weakSite:$('#weakSite').checked,activeSocial:$('#activeSocial').checked,hasContacts:$('#hasContacts').checked,goodNiche:$('#goodNiche').checked}};let i=leads.findIndex(x=>x.id===id);if(i>=0)leads[i]=l;else leads.unshift(l);save();clearForm();showView('leads');refresh()};
 $('#exportBtn').onclick=()=>{let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(leads,null,2)],{type:'application/json'}));a.download='badbee-leads.json';a.click()};$('#importInput').onchange=async e=>{try{let d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d))throw 0;leads=d;save();refresh();alert('Импортировано')}catch{alert('Ошибка JSON')}};
 const catNames={cafe:'Кафе / ресторан',dental:'Стоматология',clinic:'Клиника',beauty:'Салон красоты',fitness:'Фитнес',hotel:'Отель',education:'Образование',realestate:'Недвижимость',shop:'Магазин'};
