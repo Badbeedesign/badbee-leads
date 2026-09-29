@@ -1,6 +1,6 @@
 const KEY='badbee_leads_v2';let leads=[];let found=[];
 const $=s=>document.querySelector(s);const save=()=>{localStorage.setItem(KEY,JSON.stringify(leads));if(window.bbPersistLeads)window.bbPersistLeads();};
-function score(l){const s=l.signals||{};return(s.needsDesigner?30:0)+(s.activeLaunch?20:0)+(s.weakSite?15:0)+(s.activeSocial?15:0)+(s.hasContacts?10:0)+(s.goodNiche?10:0)}
+function score(l){const s=l.signals||{};return(s.needsDesigner?30:0)+(s.activeLaunch?20:0)+(s.activeSocial?15:0)+(s.hasContacts?10:0)+(s.goodNiche?10:0)}
 function recommendation(l){
   const n=(l.niche||'').toLowerCase();
 
@@ -58,9 +58,13 @@ function recommendation(l){
 }
 function service(l){return recommendation(l).primary}
 function message(l){
-  const r=recommendation(l),a=l.siteAnalysis||{}; let observation='Посмотрела, как у вас сейчас оформлена подача компании.';
-  if(a.ok&&a.issues?.length){const nice=a.issues.slice(0,2).map(x=>x.replace('не найден viewport для мобильных','на главной не определяется стандартная мобильная настройка').replace('нет полноценного meta description','не заполнено полноценное описание страницы').replace('слабый или отсутствующий title','можно усилить заголовок страницы').replace('нет HTTPS','сайт открывается без HTTPS')).join(' и '); observation=`Посмотрела ваш сайт: заметила, что ${nice}.`;}
-  else if(l.notes&&!l.notes.startsWith('Найдено автоматически')) observation=l.notes;
+  const r=recommendation(l);
+  let observation='Посмотрела, как у вас сейчас оформлена подача компании.';
+
+  if(l.notes&&!l.notes.startsWith('Найдено автоматически')){
+    observation=l.notes;
+  }
+
   return `Здравствуйте! Посмотрела ${l.company}. ${observation}\n\nЯ дизайнер и вижу здесь возможность усилить ${r.hook}. Могу бесплатно набросать 2–3 конкретные идеи, что я бы улучшила в первую очередь. Если откликнется — обсудим формат работы.`;
 }
 function whyLead(l){const r=recommendation(l);return r.evidence.length?r.evidence.map(x=>'• '+x).join('\n'):'Пока мало объективных сигналов. Перед контактом лучше проверить сайт и компанию вручную.'}
@@ -70,77 +74,8 @@ function siteLabel(l){if(!l.website)return '<span class="muted">нет</span>';i
 function renderTable(){let q=$('#searchInput').value.toLowerCase(),st=$('#statusFilter').value,sf=$('#serviceFilter').value,rows=leads.filter(l=>(!q||[l.company,l.city,l.niche,l.source].join(' ').toLowerCase().includes(q))&&(!st||l.status===st)&&(!sf||service(l)===sf));$('#leadsTable').innerHTML=rows.map(l=>`<tr><td><b>${esc(l.company)}</b><div class="muted small">${esc(l.source||'')}</div></td><td>${esc(l.city||'—')}</td><td>${esc(l.niche||'—')}</td><td>${service(l)}</td><td><b>${score(l)}</b></td><td>${siteLabel(l)}</td><td>${l.status}</td><td><button class="linkbtn" onclick="openLead('${l.id}')">Открыть</button></td></tr>`).join('')||'<tr><td colspan="8" class="muted">Ничего не найдено</td></tr>'}
 function showView(v){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));$('#'+v+'View').classList.add('active');document.querySelectorAll('.nav').forEach(x=>x.classList.toggle('active',x.dataset.view===v));$('#viewTitle').textContent={dashboard:'Обзор',finder:'Найти клиентов',leads:'Лиды',add:'Добавить лид',campaign:'Тестовая кампания',signals:'Сигналы спроса',research:'Инфоповоды',outreach:'Сообщения',results:'Результаты'}[v]}
 document.querySelectorAll('.nav').forEach(b=>b.onclick=()=>showView(b.dataset.view));$('#quickAdd').onclick=()=>{clearForm();showView('add')};['searchInput','statusFilter','serviceFilter'].forEach(id=>$('#'+id).addEventListener('input',renderTable));
-function openLead(id){const l=leads.find(x=>x.id===id);if(!l)return;let sm={needsDesigner:'Ищет дизайнера',activeLaunch:'Запуск/рост',weakSite:'Слабый сайт',activeSocial:'Активные соцсети',hasContacts:'Есть контакты',goodNiche:'Хороший чек'};let tags=Object.entries(l.signals||{}).filter(x=>x[1]).map(x=>sm[x[0]]).filter(Boolean);$('#drawerContent').innerHTML=`<h2>${esc(l.company)}</h2><div class="muted">${esc(l.city||'')} · ${esc(l.niche||'')} · ${esc(l.source||'')}</div><div class="detailgrid"><div class="detailbox"><span class="muted small">Lead Score</span><h2>${score(l)}/100</h2></div><div class="detailbox"><span class="muted small">Предложить</span><h2>${service(l)}</h2></div></div><div>${tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div><h3 style="margin-top:20px">Рекомендация BADBEE</h3><div class="analysisbox"><b>${esc(recommendation(l).primary)}</b><p>${esc(recommendation(l).reason)}</p><p class="muted small" style="white-space:pre-line">${esc(whyLead(l))}</p></div><h3>Заметки</h3><p>${esc(l.notes||'Пока нет заметок.')}</p><h3>Контакты</h3><p>${l.website?`Сайт: ${esc(l.website)}<br>`:''}${l.social?`Соцсеть: ${esc(l.social)}<br>`:''}${l.contact?`Контакт: ${esc(l.contact)}`:'Публичный контакт не добавлен'}</p><h3>Первое сообщение</h3><div class="message">${esc(message(l))}</div><div class="actions">${l.website?`<button class="primary" onclick="analyzeLead('${l.id}')">Проверить сайт</button>`:''}<button class="primary" onclick="copyMsg('${l.id}')">Скопировать</button><button class="ghost dark" onclick="editLead('${l.id}')">Редактировать</button><button class="ghost dark" onclick="deleteLead('${l.id}')">Удалить</button></div>`;$('#drawer').classList.remove('hidden')}
-function siteAnalysisHtml(l){let a=l.siteAnalysis;if(!a)return l.website?'<h3>Проверка сайта</h3><p class="muted">Сайт ещё не проверен.</p>':'';if(!a.ok)return `<h3>Проверка сайта</h3><p class="muted">Не удалось проверить: ${esc(a.error||'ошибка')}</p>`;return `<h3>Проверка сайта</h3><div class="analysisbox"><div><b>${a.needs_attention?'Есть сигналы для внимания':'Базовые технические признаки в норме'}</b></div>${a.issues?.length?`<p><b>Что обнаружено:</b><br>${a.issues.map(x=>'• '+esc(x)).join('<br>')}</p>`:''}${a.positives?.length?`<p class="muted"><b>Плюсы:</b> ${a.positives.map(esc).join(', ')}</p>`:''}<p class="muted small">Это техническая эвристика, а не оценка красоты дизайна.</p></div>`}
-async function analyzeLead(id,silent=false){
-  const l=leads.find(x=>x.id===id);
-  if(!l)return false;
+function openLead(id){const l=leads.find(x=>x.id===id);if(!l)return;let sm={needsDesigner:'Ищет дизайнера',activeLaunch:'Запуск/рост',weakSite:'Слабый сайт',activeSocial:'Активные соцсети',hasContacts:'Есть контакты',goodNiche:'Хороший чек'};let tags=Object.entries(l.signals||{}).filter(x=>x[1]).map(x=>sm[x[0]]).filter(Boolean);$('#drawerContent').innerHTML=`<h2>${esc(l.company)}</h2><div class="muted">${esc(l.city||'')} · ${esc(l.niche||'')} · ${esc(l.source||'')}</div><div class="detailgrid"><div class="detailbox"><span class="muted small">Lead Score</span><h2>${score(l)}/100</h2></div><div class="detailbox"><span class="muted small">Предложить</span><h2>${service(l)}</h2></div></div><div>${tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div><h3 style="margin-top:20px">Рекомендация BADBEE</h3><div class="analysisbox"><b>${esc(recommendation(l).primary)}</b><p>${esc(recommendation(l).reason)}</p><p class="muted small" style="white-space:pre-line">${esc(whyLead(l))}</p></div><h3>Заметки</h3><p>${esc(l.notes||'Пока нет заметок.')}</p><h3>Контакты</h3><p>${l.website?`Сайт: ${esc(l.website)}<br>`:''}${l.social?`Соцсеть: ${esc(l.social)}<br>`:''}${l.contact?`Контакт: ${esc(l.contact)}`:'Публичный контакт не добавлен'}</p><h3>Первое сообщение</h3><div class="message">${esc(message(l))}</div><div class="actions"><button class="primary" onclick="copyMsg('${l.id}')">Скопировать</button><button class="ghost dark" onclick="editLead('${l.id}')">Редактировать</button><button class="ghost dark" onclick="deleteLead('${l.id}')">Удалить</button></div>`;$('#drawer').classList.remove('hidden')}
 
-  if(!l.website){
-    if(!silent)alert('У этого лида не указан сайт.');
-    return false;
-  }
-
-  try{
-    if(!silent){
-      const btn=event?.target;
-      if(btn){
-        btn.disabled=true;
-        btn.textContent='Проверяю…';
-      }
-    }
-
-    const response=await fetch(
-      'https://isjlcxnhqcznaobpyeet.supabase.co/functions/v1/analyze-site',
-      {
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json'
-        },
-        body:JSON.stringify({
-          url:l.website
-        })
-      }
-    );
-
-    const data=await response.json();
-
-    if(!response.ok || !data.ok){
-      throw new Error(data.error||'Не удалось проверить сайт');
-    }
-
-    l.siteAnalysis=data;
-
-    l.signals={
-      ...(l.signals||{}),
-      weakSite:!!data.needs_attention,
-      hasContacts:!!(
-        l.contact ||
-        l.website ||
-        l.social
-      )
-    };
-
-    save();
-    refresh();
-
-    if(!silent){
-      openLead(id);
-    }
-
-    return true;
-
-  }catch(err){
-    console.error('BADBEE site analysis:',err);
-
-    if(!silent){
-      alert('Не удалось проверить сайт: '+err.message);
-      openLead(id);
-    }
-
-    return false;
-  }
-}
 function clearForm(){$('#leadForm').reset();$('#leadId').value='';$('#formTitle').textContent='Новый лид'}$('#cancelEdit').onclick=()=>{clearForm();showView('leads')};$('#leadForm').onsubmit=e=>{e.preventDefault();let id=$('#leadId').value||crypto.randomUUID(),l={id,company:$('#company').value.trim(),city:$('#city').value.trim(),niche:$('#niche').value.trim(),source:$('#source').value,website:$('#website').value.trim(),social:$('#social').value.trim(),contact:$('#contact').value.trim(),status:$('#status').value,notes:$('#notes').value.trim(),signals:{needsDesigner:$('#needsDesigner').checked,activeLaunch:$('#activeLaunch').checked,weakSite:$('#weakSite').checked,activeSocial:$('#activeSocial').checked,hasContacts:$('#hasContacts').checked,goodNiche:$('#goodNiche').checked}};let i=leads.findIndex(x=>x.id===id);if(i>=0)leads[i]=l;else leads.unshift(l);save();clearForm();showView('leads');refresh()};
 $('#exportBtn').onclick=()=>{let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(leads,null,2)],{type:'application/json'}));a.download='badbee-leads.json';a.click()};$('#importInput').onchange=async e=>{try{let d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d))throw 0;leads=d;save();refresh();alert('Импортировано')}catch{alert('Ошибка JSON')}};
 const catNames={cafe:'Кафе / ресторан',dental:'Стоматология',clinic:'Клиника',beauty:'Салон красоты',fitness:'Фитнес',hotel:'Отель',education:'Образование',realestate:'Недвижимость',shop:'Магазин'};
@@ -347,14 +282,14 @@ function nicheInfo(l){
 function demandSignals(l){
   const s=l.signals||{}, n=nicheInfo(l);
   const out=[];
+
   if(s.needsDesigner) out.push({w:30,t:'Прямой спрос',d:'Есть явный сигнал поиска дизайнера.'});
   if(s.activeLaunch) out.push({w:20,t:'Запуск / рост',d:'Запуск, новый продукт или филиал повышает вероятность заказа.'});
-  if(s.weakSite) out.push({w:15,t:'Сайт требует внимания',d:'Обнаружены объективные проблемы в текущей веб-упаковке.'});
   if(s.activeSocial) out.push({w:15,t:'Активный маркетинг',d:'Компания активно использует соцсети — дизайн нужен регулярно.'});
   if(s.hasContacts) out.push({w:10,t:'Можно связаться',d:'Есть публичный контакт для первого касания.'});
   if(n.bonus>=15) out.push({w:n.bonus,t:'Перспективная ниша',d:n.reasons.join(' · ')});
-  if(l.website && s.weakSite) out.push({w:8,t:'Конкретный повод написать',d:'Можно заходить не с общей продажей, а с конкретным наблюдением по сайту.'});
-  if((l.social||'') && !s.activeSocial) out.push({w:4,t:'Есть соцсеть',d:'Можно вручную проверить актуальные запуски и визуал перед сообщением.'});
+  if((l.social||'') && !s.activeSocial) out.push({w:4,t:'Есть соцсеть',d:'Можно вручную посмотреть актуальную визуальную подачу перед сообщением.'});
+
   return out.sort((a,b)=>b.w-a.w);
 }
 
@@ -362,17 +297,15 @@ function demandScore(l){
   const base=score(l);
   const n=nicheInfo(l);
   let extra=0;
-  if(l.website && l.signals?.weakSite) extra+=8;
+
   if(l.social && !l.signals?.activeSocial) extra+=4;
   extra+=Math.max(0,n.bonus-(l.signals?.goodNiche?10:0));
+
   return Math.min(100,base+extra);
 }
 
 function bestOffer(l){
-  const n=nicheInfo(l), current=service(l);
-  if(l.signals?.weakSite) return 'Сайт';
-  if(n.services.includes(current)) return current;
-  return n.services[0]||current;
+  return service(l);
 }
 
 function renderSignals(){
