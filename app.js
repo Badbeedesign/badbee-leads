@@ -92,7 +92,15 @@ $('#runSearch').onclick=async()=>{
         };
       })
       .filter(x=>x.name)
-      .slice(0,limit);
+     .sort((a,b)=>{
+  const priority=x=>
+    (x.website ? 2 : 0) +
+    ((x.phone || x.email) ? 2 : 0) +
+    (x.address ? 1 : 0);
+
+  return priority(b)-priority(a);
+})
+.slice(0,limit);
 
     renderSearchResults();
     $('#resultsPanel').classList.remove('hidden');
