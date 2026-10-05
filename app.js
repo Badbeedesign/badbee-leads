@@ -484,20 +484,69 @@ document.querySelector('#generateOutreach')?.addEventListener('click',renderOutr
 document.querySelector('#outreachLead')?.addEventListener('change',renderOutreach);
 document.querySelector('#outreachChannel')?.addEventListener('change',renderOutreach);
 document.querySelector('#copyOutreach')?.addEventListener('click',()=>navigator.clipboard.writeText(document.querySelector('#outreachText').value));
-document.querySelector('#markOutreachSent')?.addEventListener('click',()=>{
-  const l=leads.find(x=>x.id===document.querySelector('#outreachLead')?.value); if(!l)return;
-  l.status='Написала';
-  if(typeof campaign!=='undefined'){
-    campaign.touches=campaign.touches||{};
-    campaign.touches[l.id]=new Date().toISOString();
-    if(!campaign.leadIds.includes(l.id))campaign.leadIds.push(l.id);
-    if(typeof saveCampaign==='function')saveCampaign();
+document.querySelector('#sendOutreachEmail')?.addEventListener('click',async()=>{
+  const btn=document.querySelector('#sendOutreachEmail');
+  const l=leads.find(x=>x.id===document.querySelector('#outreachLead')?.value);
+
+  if(!l)return alert('Выбери компанию');
+  if(!l.email)return alert('У этого лида нет Email');
+
+  const text=document.querySelector('#outreachText')?.value.trim();
+  if(!text)return alert('Сначала сформируй текст письма');
+
+  const subject=`Предложение для ${l.company}`;
+
+  if(!confirm(`Отправить письмо на ${l.email}?`))return;
+
+  const oldText=btn.textContent;
+  btn.disabled=true;
+  btn.textContent='Отправляю…';
+
+  try{
+    const response=await fetch(
+      'https://isjlcxnhqcznaobpyeet.supabase.co/functions/v1/send-email',
+      {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          to:l.email,
+          subject,
+          text
+        })
+      }
+    );
+
+    const result=await response.json();
+
+    if(!response.ok || !result.ok){
+      throw new Error(result.error||'Не удалось отправить письмо');
+    }
+
+    l.status='Написала';
+
+    if(typeof campaign!=='undefined'){
+      campaign.touches=campaign.touches||{};
+      campaign.touches[l.id]=new Date().toISOString();
+
+      if(!campaign.leadIds.includes(l.id)){
+        campaign.leadIds.push(l.id);
+      }
+
+      if(typeof saveCampaign==='function')saveCampaign();
+    }
+
+    save();
+    if(typeof refresh==='function')refresh();
+    renderOutreach();
+
+    alert(`Письмо отправлено: ${l.email}`);
+  }catch(err){
+    alert('Ошибка отправки: '+err.message);
+  }finally{
+    btn.disabled=false;
+    btn.textContent=oldText;
   }
-  save(); if(typeof refresh==='function')refresh(); renderOutreach();
 });
-const _refresh08=typeof refresh==='function'?refresh:null;
-if(_refresh08){refresh=function(){_refresh08();fillOutreachLeads();};}
-fillOutreachLeads(); renderOutreach();
 
 
 // ===== BADBEE LEADS 0.9: outcome analytics =====
