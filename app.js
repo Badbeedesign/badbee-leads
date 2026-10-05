@@ -93,6 +93,7 @@ function editLead(id){
   $('#website').value=l.website||'';
   $('#social').value=l.social||'';
   $('#contact').value=l.contact||'';
+  $('#email').value=l.email||'';
   $('#status').value=l.status||'Новый';
   $('#notes').value=l.notes||'';
 
