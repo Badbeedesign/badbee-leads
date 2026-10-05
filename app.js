@@ -81,6 +81,33 @@ function showView(v){document.querySelectorAll('.view').forEach(x=>x.classList.r
 document.querySelectorAll('.nav').forEach(b=>b.onclick=()=>showView(b.dataset.view));$('#quickAdd').onclick=()=>{clearForm();showView('add')};['searchInput','statusFilter','serviceFilter'].forEach(id=>$('#'+id).addEventListener('input',renderTable));
 function openLead(id){const l=leads.find(x=>x.id===id);if(!l)return;let sm={needsDesigner:'Ищет дизайнера',activeLaunch:'Запуск/рост',weakSite:'Слабый сайт',activeSocial:'Активные соцсети',hasContacts:'Есть контакты',goodNiche:'Хороший чек'};let tags=Object.entries(l.signals||{}).filter(x=>x[1]).map(x=>sm[x[0]]).filter(Boolean);$('#drawerContent').innerHTML=`<h2>${esc(l.company)}</h2><div class="muted">${esc(l.city||'')} · ${esc(l.niche||'')} · ${esc(l.source||'')}</div><div class="detailgrid"><div class="detailbox"><span class="muted small">Lead Score</span><h2>${score(l)}/100</h2></div><div class="detailbox"><span class="muted small">Предложить</span><h2>${service(l)}</h2></div></div><div>${tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div><h3 style="margin-top:20px">Рекомендация BADBEE</h3><div class="analysisbox"><b>${esc(recommendation(l).primary)}</b><p>${esc(recommendation(l).reason)}</p><p class="muted small" style="white-space:pre-line">${esc(whyLead(l))}</p></div><h3>Заметки</h3><p>${esc(l.notes||'Пока нет заметок.')}</p><h3>Контакты</h3><p>${l.website?`Сайт: ${esc(l.website)}<br>`:''}${l.social?`Соцсеть: ${esc(l.social)}<br>`:''}${l.contact?`Контакт: ${esc(l.contact)}`:'Публичный контакт не добавлен'}</p><h3>Первое сообщение</h3><div class="message">${esc(message(l))}</div><div class="actions"><button class="primary" onclick="copyMsg('${l.id}')">Скопировать</button><button class="ghost dark" onclick="editLead('${l.id}')">Редактировать</button><button class="ghost dark" onclick="deleteLead('${l.id}')">Удалить</button></div>`;$('#drawer').classList.remove('hidden')}
 $('#closeDrawer').onclick=()=>$('#drawer').classList.add('hidden');
+function editLead(id){
+  const l=leads.find(x=>x.id===id);
+  if(!l)return;
+
+  $('#leadId').value=l.id;
+  $('#company').value=l.company||'';
+  $('#city').value=l.city||'';
+  $('#niche').value=l.niche||'';
+  $('#source').value=l.source||'';
+  $('#website').value=l.website||'';
+  $('#social').value=l.social||'';
+  $('#contact').value=l.contact||'';
+  $('#status').value=l.status||'Новый';
+  $('#notes').value=l.notes||'';
+
+  const s=l.signals||{};
+  $('#needsDesigner').checked=!!s.needsDesigner;
+  $('#activeLaunch').checked=!!s.activeLaunch;
+  $('#weakSite').checked=!!s.weakSite;
+  $('#activeSocial').checked=!!s.activeSocial;
+  $('#hasContacts').checked=!!s.hasContacts;
+  $('#goodNiche').checked=!!s.goodNiche;
+
+  $('#formTitle').textContent='Редактировать лид';
+  $('#drawer').classList.add('hidden');
+  showView('add');
+}
 function clearForm(){$('#leadForm').reset();$('#leadId').value='';$('#formTitle').textContent='Новый лид'}$('#cancelEdit').onclick=()=>{clearForm();showView('leads')};$('#leadForm').onsubmit=e=>{e.preventDefault();let id=$('#leadId').value||crypto.randomUUID(),l={id,company:$('#company').value.trim(),city:$('#city').value.trim(),niche:$('#niche').value.trim(),source:$('#source').value,website:$('#website').value.trim(),social:$('#social').value.trim(),contact:$('#contact').value.trim(),status:$('#status').value,notes:$('#notes').value.trim(),signals:{needsDesigner:$('#needsDesigner').checked,activeLaunch:$('#activeLaunch').checked,weakSite:$('#weakSite').checked,activeSocial:$('#activeSocial').checked,hasContacts:$('#hasContacts').checked,goodNiche:$('#goodNiche').checked}};let i=leads.findIndex(x=>x.id===id);if(i>=0)leads[i]=l;else leads.unshift(l);save();clearForm();showView('leads');refresh()};
 $('#exportBtn').onclick=()=>{let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(leads,null,2)],{type:'application/json'}));a.download='badbee-leads.json';a.click()};$('#importInput').onchange=async e=>{try{let d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d))throw 0;leads=d;save();refresh();alert('Импортировано')}catch{alert('Ошибка JSON')}};
 const catNames={cafe:'Кафе / ресторан',dental:'Стоматология',clinic:'Клиника',beauty:'Салон красоты',fitness:'Фитнес',hotel:'Отель',education:'Образование',realestate:'Недвижимость',shop:'Магазин'};
