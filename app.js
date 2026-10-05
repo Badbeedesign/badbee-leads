@@ -162,6 +162,16 @@ $('#runSearch').onclick=async()=>{
       .map(el=>{
         const t=el.tags||{};
         return{
+          closed:!!(
+  t.disused ||
+  t.abandoned ||
+  t.closed ||
+  t.end_date ||
+  t['disused:amenity'] ||
+  t['abandoned:amenity'] ||
+  t['disused:shop'] ||
+  t['abandoned:shop']
+),
           name:t.name||t.brand||'',
           website:t.website||t['contact:website']||'',
           phone:t.phone||t['contact:phone']||'',
@@ -171,7 +181,7 @@ $('#runSearch').onclick=async()=>{
             .join(', ')
         };
       })
-      .filter(x=>x.name)
+     .filter(x=>x.name && !x.closed)
      .sort((a,b)=>{
   const priority=x=>
     (x.website ? 2 : 0) +
